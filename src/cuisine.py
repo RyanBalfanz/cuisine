@@ -50,6 +50,7 @@ WINDOWS_EOL = "\r\n"
 # FIXME: MODE should be in the fabric env, as this is definitely not thread-safe
 MODE_LOCAL  = False
 MODE_SUDO   = False
+MODE_SUDO_OPTIONS = None
 DEFAULT_OPTIONS = dict(
 	package="apt"
 )
@@ -128,6 +129,28 @@ class mode_sudo(object):
 		global MODE_SUDO
 		MODE_SUDO = self._old_mode
 
+class mode_as_user(object):
+	"""Cuisine functions will be executed as the given user."""
+	def __init__(self, user):
+		global MODE_SUDO
+		global MODE_SUDO_OPTIONS
+		self._old_mode = MODE_SUDO
+		self._old_mode_options = MODE_SUDO_OPTIONS
+		MODE_SUDO = True
+		MODE_SUDO_OPTIONS = dict(
+			user=user
+		)
+
+	def __enter__(self):
+		pass
+
+	def __exit__(self, *args, **kws):
+		global MODE_SUDO
+		global MODE_SUDO_OPTIONS
+		MODE_SUDO = self._old_mode
+		MODE_SUDO_OPTIONS = self._old_mode_options
+		
+
 # =============================================================================
 #
 # OPTIONS
@@ -153,6 +176,11 @@ def run(*args, **kwargs):
 	'cuisine.MODE' global to tell whether the command should be run as
 	regular user or sudo."""
 	if MODE_SUDO:
+		if MODE_SUDO_OPTIONS:
+			print "MODE_SUDO_OPTIONS: " + str(MODE_SUDO_OPTIONS)
+			if not MODE_SUDO_OPTIONS.keys() == ["user"]:
+				raise ValueError("Unexpected options for sudo mode.")
+			kwargs.update(MODE_SUDO_OPTIONS)
 		return fabric.api.sudo(*args, **kwargs)
 	else:
 		return fabric.api.run(*args, **kwargs)
